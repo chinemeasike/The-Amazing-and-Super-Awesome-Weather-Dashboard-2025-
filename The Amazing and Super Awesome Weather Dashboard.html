@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>The Amazing and Super Awesome Weather Dashboard</title>
+  <style>
+    body {
+      font-family: GoodDog, GoodDog;
+      padding: 20px;
+      text-align: center;
+      background-color: rgb(0, 119, 255);
+      color: white;
+    }
+
+    input, button {
+      padding: 8px;
+      margin: 5px;
+    }
+
+    h1 {
+      font-size: 60px;
+    }
+
+    #history button {
+      margin: 3px;
+      padding: 5px 10px;
+      background-color: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+    }
+
+    #history button:hover {
+      background-color: lightgray;
+    }
+
+    #weather {
+      margin-top: 20px;
+    }
+
+    .icon {
+      width: 60px;
+      height: 60px;
+    }
+
+    .toggle {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>The Amazing and Super Awesome Weather Dashboard</h1>
+
+  <input type="text" id="cityInput" placeholder="Enter city name" />
+  <button onclick="fetchWeather()">Search</button>
+  <button onclick="fetchWeatherByLocation()">Use My Location</button>
+
+  <div class="toggle">
+    <label>
+      <input type="checkbox" id="unitToggle" onchange="renderWeather()" /> Show in °F
+    </label>
+  </div>
+
+  <div id="weather"></div>
+  <div id="history"></div>
+
+  <script>
+    const e551679436e3227998b5366cdd7267a2 = 'e551679436e3227998b5366cdd7267a2'; // <-- Replace with your OpenWeatherMap API key
+    const weatherDiv = document.getElementById('weather');
+    const historyDiv = document.getElementById('history');
+    const unitToggle = document.getElementById('unitToggle');
+
+    let searchHistory = JSON.parse(localStorage.getItem('weatherHistory')) || [];
+    let lastWeatherData = null;
+
+    function fetchWeather(cityName = null) {
+      const city = cityName || document.getElementById('cityInput').value.trim();
+      if (!city) return;
+
+      weatherDiv.innerHTML = 'Loading...';
+
+      if (!searchHistory.includes(city)) {
+        searchHistory.push(city);
+        localStorage.setItem('weatherHistory', JSON.stringify(searchHistory));
+        renderHistory();
+      }
+
+      fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${e551679436e3227998b5366cdd7267a2}&units=metric`)
+        .then(res => {
+          if (!res.ok) throw new Error('City not found');
+          return res.json();
+        })
+        .then(data => {
+          lastWeatherData = data;
+          renderWeather();
+        })
+        .catch(err => {
+          weatherDiv.innerHTML = `<p>Error: ${err.message}</p>`;
+        });
+    }
+
+    function fetchWeatherByLocation() {
+      if (!navigator.geolocation) {
+        weatherDiv.innerHTML = '<p>Geolocation is not supported by your browser.</p>';
+        return;
+      }
+
+      weatherDiv.innerHTML = 'Getting your location...';
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+
+          fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${e551679436e3227998b5366cdd7267a2}&units=metric`)
+            .then(res => {
+              if (!res.ok) throw new Error('Location weather not found');
+              return res.json();
+            })
+            .then(data => {
+              lastWeatherData = data;
+              renderWeather();
+
+              const city = data.name;
+              if (!searchHistory.includes(city)) {
+                searchHistory.push(city);
+                localStorage.setItem('weatherHistory', JSON.stringify(searchHistory));
+                renderHistory();
+              }
+            })
+            .catch(err => {
+              weatherDiv.innerHTML = `<p>Error: ${err.message}</p>`;
+            });
+        },
+        error => {
+          weatherDiv.innerHTML = `<p>Unable to retrieve your location: ${error.message}</p>`;
+        }
+      );
+    }
+
+    function renderWeather() {
+      if (!lastWeatherData) return;
+
+      const isFahrenheit = unitToggle.checked;
+      const tempC = lastWeatherData.main.temp;
+      const temp = isFahrenheit ? (tempC * 9 / 5 + 32).toFixed(1) : tempC.toFixed(1);
+      const unit = isFahrenheit ? '°F' : '°C';
+
+      const html = `
+        <h2>${lastWeatherData.name}</h2>
+        <p><strong>Temperature:</strong> ${temp}${unit}</p>
+        <p><strong>Condition:</strong> ${lastWeatherData.weather[0].main}</p>
+        <img class="icon" src="https://openweathermap.org/img/wn/${lastWeatherData.weather[0].icon}@2x.png" alt="icon" />
+        <p><strong>Humidity:</strong> ${lastWeatherData.main.humidity}%</p>
+        <p><strong>Wind Speed:</strong> ${lastWeatherData.wind.speed} m/s</p>
+      `;
+      weatherDiv.innerHTML = html;
+    }
+
+    function renderHistory() {
+      historyDiv.innerHTML = '<h3>Search History</h3>';
+      searchHistory.forEach(city => {
+        const btn = document.createElement('button');
+        btn.textContent = city;
+        btn.onclick = () => fetchWeather(city);
+        historyDiv.appendChild(btn);
+      });
+    }
+
+    // Initial render
+    renderHistory();
+  </script>
+</body>
+</html>
+
+
+
+
